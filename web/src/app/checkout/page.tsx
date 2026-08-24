@@ -22,9 +22,9 @@ interface Product {
 }
 
 const demoProducts: Product[] = [
-  { id: "prod_001", name: "Developer Toolkit Pro", price: 49.99, stock: 10 },
-  { id: "prod_002", name: "API Gateway License", price: 199.99, stock: 5 },
-  { id: "prod_003", name: "Last Unit Item (Race Test)", price: 29.99, stock: 1 },
+  { id: "11111111-1111-1111-1111-111111111111", name: "Developer Toolkit Pro", price: 49.99, stock: 100 },
+  { id: "22222222-2222-2222-2222-222222222222", name: "API Gateway License", price: 199.99, stock: 50 },
+  { id: "44444444-4444-4444-4444-444444444444", name: "Last Unit Item (Race Test)", price: 29.99, stock: 1 },
 ];
 
 export default function CheckoutPage() {
@@ -48,12 +48,29 @@ export default function CheckoutPage() {
 
     const key = idempotencyKey || generateKey();
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": key,
+        },
+        body: JSON.stringify({
+          user_id: "00000000-0000-0000-0000-000000000001",
+          items: [{ product_id: selectedProduct.id, quantity: 1 }],
+        }),
+      });
 
-    if (Math.random() > 0.2) {
-      setStatus("success");
-      setOrderId(`ord_${Math.random().toString(36).slice(2, 11)}`);
-    } else {
+      const data = await response.json();
+
+      if (response.status === 201) {
+        setStatus("success");
+        setOrderId(data.id);
+      } else {
+        setStatus("error");
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
       setStatus("error");
     }
   };

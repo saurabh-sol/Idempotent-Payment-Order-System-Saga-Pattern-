@@ -13,3 +13,7 @@ dist/
 build/
 .DS_Store
 .cursor/
+node_modules/
+.next/
+*.db
+*.sqlite

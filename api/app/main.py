@@ -5,9 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import structlog
 from pathlib import Path
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.config import get_settings
-from app.database import engine, Base
+from app.database import engine, Base, async_session_maker
+from app.seed import seed_products
 
 structlog.configure(
     processors=[
@@ -36,6 +38,11 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created")
+    
+    async with async_session_maker() as db:
+        await seed_products(db)
+        logger.info("Seed data loaded")
+    
     yield
     logger.info("Shutting down Saga Payment System")
 
@@ -58,6 +65,18 @@ app.add_middleware(
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+
+from app.routes import products, orders, webhooks, admin, agent, anomalies
+
+app.include_router(products.router)
+app.include_router(orders.router)
+app.include_router(webhooks.router)
+app.include_router(admin.router)
+app.include_router(agent.router)
+app.include_router(anomalies.router)
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 @app.get("/health")

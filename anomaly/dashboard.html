@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly Detection Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+            background: #0a0a0a;
+            color: #e5e5e5;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #1a1a1a;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .panel {
+            background: #111111;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #1a1a1a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #a3a3a3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .panel-content {
+            padding: 0;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .event-list {
+            list-style: none;
+        }
+
+        .event-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 13px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .event-item:last-child {
+            border-bottom: none;
+        }
+
+        .event-time {
+            color: #525252;
+            flex-shrink: 0;
+            width: 80px;
+        }
+
+        .event-type {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .event-type.payment {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .event-type.order {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .event-type.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .event-details {
+            color: #a3a3a3;
+            flex-grow: 1;
+        }
+
+        .flag-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #1a1a1a;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .flag-item:last-child {
+            border-bottom: none;
+        }
+
+        .flag-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .flag-reason {
+            font-weight: 600;
+            color: #f87171;
+        }
+
+        .flag-time {
+            color: #525252;
+            font-size: 12px;
+        }
+
+        .flag-user {
+            color: #a3a3a3;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .flag-action {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            background: rgba(251, 146, 60, 0.2);
+            color: #fb923c;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #525252;
+            margin-top: 4px;
+        }
+
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #525252;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Anomaly Detection Dashboard</h1>
+            <div class="status">
+                <span class="status-dot" id="status-dot"></span>
+                <span id="status-text">Connected</span>
+            </div>
+        </header>
+
+        <div class="panel" style="grid-column: 1 / -1;">
+            <div class="panel-header">
+                <span class="panel-title">Metrics</span>
+            </div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-value" id="events-count">0</div>
+                    <div class="metric-label">Events / min</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="flags-count">0</div>
+                    <div class="metric-label">Active Flags</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="rate-limited">0</div>
+                    <div class="metric-label">Rate Limited</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="users-count">0</div>
+                    <div class="metric-label">Active Users</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">Event Stream</span>
+            </div>
+            <div class="panel-content">
+                <ul class="event-list" id="events">
+                    <li class="empty-state">Waiting for events...</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">Anomaly Flags</span>
+            </div>
+            <div class="panel-content">
+                <ul class="event-list" id="flags">
+                    <li class="empty-state">No anomalies detected</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const eventsEl = document.getElementById('events');
+        const flagsEl = document.getElementById('flags');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        
+        let eventsCount = 0;
+        let flagsCount = 0;
+        let rateLimited = 0;
+        let activeUsers = new Set();
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString();
+        }
+
+        function getEventTypeClass(eventType) {
+            if (eventType.includes('Payment')) return 'payment';
+            if (eventType.includes('Order')) return 'order';
+            if (eventType.includes('Failed') || eventType.includes('Error')) return 'error';
+            return '';
+        }
+
+        function addEvent(event) {
+            if (eventsEl.querySelector('.empty-state')) {
+                eventsEl.innerHTML = '';
+            }
+
+            const li = document.createElement('li');
+            li.className = 'event-item';
+            li.innerHTML = `
+                <span class="event-time">${formatTime(event.created_at)}</span>
+                <span class="event-type ${getEventTypeClass(event.event_type)}">${event.event_type}</span>
+                <span class="event-details">${event.payload?.user_id?.slice(0, 8) || 'N/A'}...</span>
+            `;
+            
+            eventsEl.insertBefore(li, eventsEl.firstChild);
+            
+            while (eventsEl.children.length > 50) {
+                eventsEl.removeChild(eventsEl.lastChild);
+            }
+
+            eventsCount++;
+            if (event.payload?.user_id) {
+                activeUsers.add(event.payload.user_id);
+            }
+            updateMetrics();
+        }
+
+        function addFlag(flag) {
+            if (flagsEl.querySelector('.empty-state')) {
+                flagsEl.innerHTML = '';
+            }
+
+            const li = document.createElement('li');
+            li.className = 'flag-item';
+            li.innerHTML = `
+                <div class="flag-header">
+                    <span class="flag-reason">${flag.reason}</span>
+                    <span class="flag-time">${formatTime(flag.created_at)}</span>
+                </div>
+                <div class="flag-user">User: ${flag.user_id?.slice(0, 8)}...</div>
+                <span class="flag-action">${flag.action_taken}</span>
+            `;
+            
+            flagsEl.insertBefore(li, flagsEl.firstChild);
+            
+            flagsCount++;
+            if (flag.action_taken === 'rate_limited') {
+                rateLimited++;
+            }
+            updateMetrics();
+        }
+
+        function updateMetrics() {
+            document.getElementById('events-count').textContent = eventsCount;
+            document.getElementById('flags-count').textContent = flagsCount;
+            document.getElementById('rate-limited').textContent = rateLimited;
+            document.getElementById('users-count').textContent = activeUsers.size;
+        }
+
+        function connect() {
+            const ws = new WebSocket(`ws://${window.location.host}/ws/anomalies`);
+            
+            ws.onopen = () => {
+                statusDot.classList.remove('disconnected');
+                statusText.textContent = 'Connected';
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'event') {
+                    addEvent(data.data);
+                } else if (data.type === 'flag') {
+                    addFlag(data.data);
+                }
+            };
+            
+            ws.onclose = () => {
+                statusDot.classList.add('disconnected');
+                statusText.textContent = 'Disconnected';
+                setTimeout(connect, 3000);
+            };
+            
+            ws.onerror = () => {
+                ws.close();
+            };
+        }
+
+        for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+                addEvent({
+                    event_type: ['PaymentCreated', 'OrderCreated', 'PaymentSucceeded'][Math.floor(Math.random() * 3)],
+                    created_at: new Date().toISOString(),
+                    payload: { user_id: '12345678-1234-1234-1234-123456789012' }
+                });
+            }, i * 500);
+        }
+    </script>
+</body>
+</html>
