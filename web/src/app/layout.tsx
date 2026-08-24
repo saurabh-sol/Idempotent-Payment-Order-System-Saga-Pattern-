@@ -4,9 +4,10 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Saga Payment System",
+  title: "Saga Payment System | Zero Double-Charges",
   description:
-    "Distributed order-processing with Saga pattern orchestration and idempotency-key deduplication",
+    "Production-grade distributed order processing with Saga pattern orchestration and idempotency-key deduplication. Built for reliability.",
+  keywords: ["saga pattern", "idempotency", "distributed transactions", "payment system"],
 };
 
 export default function RootLayout({
@@ -15,11 +16,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="scroll-smooth">
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased bg-surface text-text-primary`}
+        className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased bg-white text-text-primary`}
       >
-        <div className="noise" />
         {children}
       </body>
     </html>

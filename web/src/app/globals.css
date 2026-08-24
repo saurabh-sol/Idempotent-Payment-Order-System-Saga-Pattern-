@@ -3,14 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --brand: #FF6B2C;
+  --brand-light: #FF8F5C;
 }
 
 * {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html,
@@ -27,8 +33,8 @@ body {
 }
 
 ::selection {
-  background: rgba(0, 212, 170, 0.3);
-  color: #fafafa;
+  background: rgba(255, 107, 44, 0.2);
+  color: #1a1a1a;
 }
 
 @layer utilities {
@@ -37,32 +43,259 @@ body {
   }
 }
 
-.noise {
-  position: fixed;
+/* Gradient blur orbs */
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.gradient-orb-orange {
+  background: radial-gradient(circle, rgba(255, 107, 44, 0.4) 0%, transparent 70%);
+}
+
+.gradient-orb-coral {
+  background: radial-gradient(circle, rgba(255, 143, 92, 0.3) 0%, transparent 70%);
+}
+
+.gradient-orb-peach {
+  background: radial-gradient(circle, rgba(255, 200, 150, 0.3) 0%, transparent 70%);
+}
+
+/* Shimmer button effect */
+.shimmer-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-btn::before {
+  content: '';
+  position: absolute;
   top: 0;
-  left: 0;
+  left: -100%;
   width: 100%;
   height: 100%;
-  pointer-events: none;
-  opacity: 0.015;
-  z-index: 1000;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  transition: left 0.5s ease;
 }
 
-.gradient-blur {
+.shimmer-btn:hover::before {
+  left: 100%;
+}
+
+/* Nav link underline animation */
+.nav-link {
+  position: relative;
+}
+
+.nav-link::after {
+  content: '';
   position: absolute;
-  width: 600px;
-  height: 400px;
-  background: radial-gradient(ellipse, rgba(0, 212, 170, 0.12) 0%, transparent 70%);
-  pointer-events: none;
-  filter: blur(60px);
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--brand), var(--brand-light));
+  transition: width 0.3s ease;
+  border-radius: 1px;
 }
 
+.nav-link:hover::after {
+  width: 100%;
+}
+
+/* Card glow effect */
 .card-glow {
   transition: all 0.3s ease;
 }
 
 .card-glow:hover {
-  box-shadow: 0 0 40px rgba(0, 212, 170, 0.08);
-  border-color: rgba(0, 212, 170, 0.3);
+  box-shadow: 0 8px 40px rgba(255, 107, 44, 0.12);
+  border-color: rgba(255, 107, 44, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Icon bounce on hover */
+.icon-bounce {
+  transition: transform 0.3s ease;
+}
+
+.icon-bounce:hover {
+  animation: bounceSubtle 0.5s ease-out;
+}
+
+@keyframes bounceSubtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Typewriter cursor */
+.typewriter-cursor {
+  display: inline-block;
+  width: 3px;
+  height: 1.1em;
+  background-color: var(--brand);
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Terminal typing animation */
+.terminal-line {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 0.5s steps(30) forwards;
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass morphism */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+/* Pulse ring animation */
+.pulse-ring {
+  position: relative;
+}
+
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--brand), var(--brand-light));
+  opacity: 0;
+  animation: pulseRing 2s ease-in-out infinite;
+}
+
+@keyframes pulseRing {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.05); }
+}
+
+/* Scroll reveal base */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Code block styling */
+.code-block {
+  background: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.code-block pre {
+  padding: 1.5rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Button base styles */
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%);
+  color: white;
+  font-weight: 500;
+  padding: 0.875rem 1.75rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(255, 107, 44, 0.3);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--foreground);
+  font-weight: 500;
+  padding: 0.875rem 1.75rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--brand);
+  background: rgba(255, 107, 44, 0.05);
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e5e7eb 20%, #e5e7eb 80%, transparent);
+}
+
+/* Animated background pattern */
+.bg-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0);
+  background-size: 40px 40px;
 }
