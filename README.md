@@ -5,7 +5,7 @@ A production-grade distributed payment system that solves the two most critical 
 1. **Double Charge Prevention** — Using idempotency keys
 2. **Partial Failure Recovery** — Using Saga pattern with automatic rollback
 
-> ⚠️ Uses **Stripe TEST MODE only**. No real charges are ever made.
+> ⚠️ Uses **Stripe TEST MODE only**. No real charges are ever made. Set `STRIPE_ENABLED=true` in `.env` to charge via real Stripe test API (`tok_visa` test card).
 
 ---
 
@@ -398,6 +398,43 @@ pytest tests/test_saga.py -v
 
 ---
 
+## Stripe Webhooks (Local Development)
+
+Payment confirmations can also arrive via Stripe webhooks. To test locally:
+
+### 1. Install Stripe CLI
+
+```bash
+brew install stripe/stripe-cli/stripe
+stripe login
+```
+
+### 2. Forward webhooks to the API
+
+```bash
+stripe listen --forward-to localhost:8000/webhooks/stripe
+```
+
+The CLI prints a webhook signing secret like `whsec_...`. Add it to your root `.env`:
+
+```bash
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+```
+
+Restart the API after updating `.env`.
+
+### 3. Trigger a test event
+
+```bash
+stripe trigger payment_intent.succeeded
+```
+
+You should see the event logged in the API and reflected in order/payment status.
+
+> **Note:** The Interactive Saga Lab checkout works without webhooks — orders are created synchronously via the saga orchestrator. Webhooks are for async Stripe events (refunds, disputes, delayed confirmations).
+
+---
+
 ## Environment Variables
 
 ```bash
@@ -409,7 +446,9 @@ REDIS_URL=redis://localhost:6379/0
 
 # Stripe (TEST MODE)
 STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_ENABLED=true
 ```
 
 ---

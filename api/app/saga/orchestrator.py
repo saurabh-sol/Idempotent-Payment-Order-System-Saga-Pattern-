@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models import Order, SagaStep, SagaStepStatus, OrderStatus
+from app.outbox import EventType, publish_saga_event
 from app.saga.steps import (
     reserve_inventory,
     release_inventory,
@@ -60,6 +61,30 @@ class SagaOrchestrator:
         self.db = db
         self.payment_gateway = payment_gateway or MockPaymentGateway()
         self.completed_steps: List[str] = []
+        self._order: Optional[Order] = None
+
+    async def _load_order(self, order_id: uuid.UUID) -> Order:
+        if self._order is None or self._order.id != order_id:
+            result = await self.db.execute(select(Order).where(Order.id == order_id))
+            self._order = result.scalar_one()
+        return self._order
+
+    async def _emit_step_event(self, order_id: uuid.UUID, step_name: str) -> None:
+        order = await self._load_order(order_id)
+        event_map = {
+            "reserve_inventory": EventType.INVENTORY_RESERVED,
+            "charge_payment": EventType.PAYMENT_SUCCEEDED,
+            "confirm_order": EventType.ORDER_CONFIRMED,
+        }
+        event_type = event_map.get(step_name)
+        if event_type:
+            await publish_saga_event(
+                self.db,
+                event_type,
+                order_id,
+                order.user_id,
+                step_name=step_name,
+            )
     
     async def execute(
         self,
@@ -72,11 +97,19 @@ class SagaOrchestrator:
         Returns True if saga completed successfully, False if compensated.
         """
         steps = self._get_steps(order_id, idempotency_key)
+        await self._load_order(order_id)
         
         try:
             for step in steps:
                 await self._execute_step(order_id, step)
-            
+                await self._emit_step_event(order_id, step.name)
+
+            await publish_saga_event(
+                self.db,
+                EventType.SAGA_COMPLETED,
+                order_id,
+                self._order.user_id,
+            )
             await self.db.commit()
             logger.info(
                 "Saga completed successfully",
@@ -182,12 +215,17 @@ class SagaOrchestrator:
         failure_reason: str,
     ) -> None:
         """Execute compensating actions in reverse order."""
-        result = await self.db.execute(
-            select(Order).where(Order.id == order_id)
-        )
-        order = result.scalar_one()
+        order = await self._load_order(order_id)
         order.status = OrderStatus.COMPENSATING.value
         await self.db.flush()
+
+        await publish_saga_event(
+            self.db,
+            EventType.SAGA_COMPENSATING,
+            order_id,
+            order.user_id,
+            error_message=failure_reason,
+        )
         
         steps = self._get_steps(order_id, idempotency_key)
         
@@ -239,6 +277,13 @@ class SagaOrchestrator:
                 )
         
         order.status = OrderStatus.CANCELLED.value
+        await publish_saga_event(
+            self.db,
+            EventType.ORDER_CANCELLED,
+            order_id,
+            order.user_id,
+            error_message=failure_reason,
+        )
         await self.db.commit()
         
         logger.info(

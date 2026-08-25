@@ -52,8 +52,15 @@ class StripePaymentGateway:
                     stripe.PaymentIntent.create,
                     amount=amount_cents,
                     currency=currency,
+                    payment_method_data={
+                        "type": "card",
+                        "card": {"token": settings.stripe_test_card_token},
+                    },
                     confirm=True,
-                    automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
+                    automatic_payment_methods={
+                        "enabled": True,
+                        "allow_redirects": "never",
+                    },
                     idempotency_key=idempotency_key,
                     metadata=metadata or {},
                 )
@@ -96,6 +103,69 @@ class StripePaymentGateway:
                     error_code=e.code if hasattr(e, 'code') else None,
                 )
                 raise ValueError(f"Payment failed: {e.user_message if hasattr(e, 'user_message') else str(e)}")
+
+    async def create_checkout_payment_intent(
+        self,
+        amount: Decimal,
+        currency: str,
+        idempotency_key: str,
+        metadata: Optional[dict] = None,
+    ) -> dict:
+        """Create an unconfirmed PaymentIntent for Stripe Elements checkout."""
+        amount_cents = int(amount * 100)
+
+        payment_intent = await asyncio.to_thread(
+            stripe.PaymentIntent.create,
+            amount=amount_cents,
+            currency=currency,
+            automatic_payment_methods={"enabled": True},
+            idempotency_key=idempotency_key,
+            metadata=metadata or {},
+        )
+
+        logger.info(
+            "Checkout PaymentIntent created",
+            payment_intent_id=payment_intent.id,
+            status=payment_intent.status,
+        )
+
+        return {
+            "id": payment_intent.id,
+            "client_secret": payment_intent.client_secret,
+            "status": payment_intent.status,
+            "amount": payment_intent.amount,
+            "currency": payment_intent.currency,
+        }
+
+    async def verify_payment_intent(
+        self,
+        payment_intent_id: str,
+        expected_amount: Decimal,
+        currency: str = "usd",
+    ) -> dict:
+        """Verify a client-confirmed PaymentIntent matches the order."""
+        payment_intent = await asyncio.to_thread(
+            stripe.PaymentIntent.retrieve,
+            payment_intent_id,
+        )
+
+        expected_cents = int(expected_amount * 100)
+        if payment_intent.amount != expected_cents:
+            raise ValueError(
+                f"Payment amount mismatch: expected {expected_cents}, got {payment_intent.amount}"
+            )
+        if payment_intent.currency != currency:
+            raise ValueError("Payment currency mismatch")
+
+        if payment_intent.status != "succeeded":
+            raise ValueError(f"Payment not completed: {payment_intent.status}")
+
+        return {
+            "id": payment_intent.id,
+            "status": payment_intent.status,
+            "amount": payment_intent.amount,
+            "currency": payment_intent.currency,
+        }
     
     async def refund_payment(
         self,

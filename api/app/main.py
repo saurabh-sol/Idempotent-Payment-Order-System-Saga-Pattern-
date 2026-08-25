@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import structlog
@@ -67,7 +67,7 @@ static_path.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 
-from app.routes import products, orders, webhooks, admin, agent, anomalies
+from app.routes import products, orders, webhooks, admin, agent, anomalies, stripe
 
 app.include_router(products.router)
 app.include_router(orders.router)
@@ -75,21 +75,30 @@ app.include_router(webhooks.router)
 app.include_router(admin.router)
 app.include_router(agent.router)
 app.include_router(anomalies.router)
+app.include_router(stripe.router)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "saga-payment-system"}
+    settings = get_settings()
+    stripe_active = bool(
+        settings.stripe_enabled and settings.stripe_secret_key.startswith("sk_")
+    )
+    return {
+        "status": "healthy",
+        "service": "saga-payment-system",
+        "stripe": {
+            "enabled": stripe_active,
+            "mode": "test" if settings.stripe_secret_key.startswith("sk_test") else "live"
+            if stripe_active
+            else None,
+        },
+    }
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
 async def root():
-    html_file = static_path / "index.html"
-    if html_file.exists():
-        return HTMLResponse(content=html_file.read_text())
-    return HTMLResponse(content="""
-    <!DOCTYPE html>
-    <html><head><meta http-equiv="refresh" content="0;url=/static/index.html"></head></html>
-    """)
+    """Redirect to Swagger docs — frontend lives on Next.js (:3002)."""
+    return RedirectResponse(url="/docs")

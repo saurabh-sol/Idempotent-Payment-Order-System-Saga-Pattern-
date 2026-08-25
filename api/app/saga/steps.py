@@ -33,6 +33,7 @@ class PaymentGateway(Protocol):
         amount: Decimal,
         currency: str,
         idempotency_key: str,
+        metadata: Optional[dict] = None,
     ) -> dict:
         ...
     
@@ -52,6 +53,7 @@ class MockPaymentGateway:
         amount: Decimal,
         currency: str,
         idempotency_key: str,
+        metadata: Optional[dict] = None,
     ) -> dict:
         return {
             "id": f"pi_mock_{uuid.uuid4().hex[:16]}",
@@ -165,6 +167,7 @@ async def charge_payment(
         amount=order.total_amount,
         currency="usd",
         idempotency_key=f"{idempotency_key}_charge",
+        metadata={"order_id": str(order_id)},
     )
     
     if gateway_response.get("status") != "succeeded":

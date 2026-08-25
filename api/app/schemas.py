@@ -46,6 +46,7 @@ class OrderItemCreate(BaseModel):
 class OrderCreate(BaseModel):
     user_id: uuid.UUID
     items: List[OrderItemCreate] = Field(min_length=1)
+    payment_intent_id: Optional[str] = None
 
 
 class OrderItemResponse(BaseModel):

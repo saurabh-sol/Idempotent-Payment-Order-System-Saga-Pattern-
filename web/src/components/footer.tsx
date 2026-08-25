@@ -3,12 +3,16 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { GithubLogo, Lightning, Heart, ArrowUpRight } from "@phosphor-icons/react";
+import { DOCS_URL, GRAFANA_URL } from "@/lib/api";
 
 const footerLinks = [
   { label: "Features", href: "#features" },
   { label: "Architecture", href: "#architecture" },
   { label: "API", href: "#api" },
   { label: "Demo", href: "/checkout" },
+  { label: "Anomalies", href: "/anomalies" },
+  { label: "API Docs", href: DOCS_URL, external: true },
+  { label: "Grafana", href: GRAFANA_URL, external: true },
 ];
 
 const socialLinks = [
@@ -75,6 +79,7 @@ export function Footer() {
                 <Link
                   key={link.label}
                   href={link.href}
+                  target={"external" in link && link.external ? "_blank" : undefined}
                   className="text-sm font-medium text-text-secondary hover:text-brand transition-colors"
                 >
                   {link.label}

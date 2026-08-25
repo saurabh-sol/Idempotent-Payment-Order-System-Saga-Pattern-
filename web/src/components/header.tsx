@@ -4,10 +4,12 @@ import Link from "next/link";
 import { motion, useScroll, useTransform } from "motion/react";
 import { Lightning, List, X } from "@phosphor-icons/react";
 import { useState, useEffect } from "react";
+import { checkApiHealth, DOCS_URL } from "@/lib/api";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const { scrollY } = useScroll();
   
   const headerBg = useTransform(
@@ -15,6 +17,12 @@ export function Header() {
     [0, 50],
     ["rgba(255, 255, 255, 0.8)", "rgba(255, 255, 255, 0.95)"]
   );
+
+  useEffect(() => {
+    checkApiHealth().then(setApiOnline);
+    const interval = setInterval(() => checkApiHealth().then(setApiOnline), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -28,6 +36,8 @@ export function Header() {
     { href: "#features", label: "Features" },
     { href: "#architecture", label: "Architecture" },
     { href: "#api", label: "API" },
+    { href: "/anomalies", label: "Anomalies" },
+    { href: DOCS_URL, label: "Docs", external: true },
     { href: "https://github.com/saurabh-sol/Idempotent-Payment-Order-System-Saga-Pattern-", label: "GitHub", external: true },
   ];
 
@@ -78,11 +88,17 @@ export function Header() {
                 className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2"
               >
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+                  {apiOnline ? (
+                    <>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+                    </>
+                  ) : (
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-text-muted"></span>
+                  )}
                 </span>
                 <span className="text-xs font-medium text-text-secondary">
-                  Online
+                  {apiOnline === null ? "Checking..." : apiOnline ? "API Online" : "API Offline"}
                 </span>
               </motion.div>
 

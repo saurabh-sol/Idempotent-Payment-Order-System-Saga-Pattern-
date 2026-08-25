@@ -10,6 +10,7 @@ const endpoints = [
   { method: "GET", path: "/api/orders/{id}", description: "Get order status and details" },
   { method: "GET", path: "/api/orders/{id}/timeline", description: "Saga step audit trail" },
   { method: "POST", path: "/api/admin/chaos", description: "Enable/disable chaos testing" },
+  { method: "GET", path: "/api/anomalies", description: "List anomaly detection flags" },
   { method: "GET", path: "/health", description: "Service health check" },
 ];
 
@@ -20,7 +21,7 @@ const codeExamples = {
   -d '{
     "user_id": "user-001",
     "items": [
-      {"product_id": "prod-001", "quantity": 1}
+      {"product_id": "11111111-1111-1111-1111-111111111111", "quantity": 1}
     ]
   }'`,
   response: `{

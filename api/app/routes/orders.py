@@ -23,6 +23,14 @@ from app.idempotency import (
     complete_idempotency_key,
 )
 from app.redis_client import get_redis
+from app.payment_gateway import get_payment_gateway
+from app.rate_limit import enforce_rate_limit
+from app.duplicate_guard import (
+    check_for_duplicate_order,
+    record_order_fingerprint,
+)
+from app.outbox import publish_order_created
+from app.config import get_settings
 from app.saga import SagaOrchestrator
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
@@ -84,7 +92,37 @@ async def create_order(
         )
     
     order_data = OrderCreate(**json.loads(body))
-    
+    settings = get_settings()
+
+    await enforce_rate_limit(str(order_data.user_id))
+
+    if settings.duplicate_guard_enabled:
+        for item in order_data.items:
+            is_duplicate, existing_order_id = await check_for_duplicate_order(
+                str(order_data.user_id),
+                str(item.product_id),
+                item.quantity,
+                db,
+            )
+            if is_duplicate and existing_order_id:
+                existing = await db.execute(
+                    select(Order)
+                    .options(selectinload(Order.items), selectinload(Order.payment))
+                    .where(Order.id == uuid.UUID(existing_order_id))
+                )
+                existing_order = existing.scalar_one_or_none()
+                if existing_order:
+                    duplicate_response = await build_order_response(existing_order)
+                    return Response(
+                        content=json.dumps({
+                            **duplicate_response,
+                            "duplicate": True,
+                            "message": "Duplicate order intent detected within guard window",
+                        }),
+                        status_code=status.HTTP_409_CONFLICT,
+                        media_type="application/json",
+                    )
+
     total_amount = 0
     order_items = []
     
@@ -124,10 +162,25 @@ async def create_order(
             unit_price=item_data["product"].price,
         )
         db.add(order_item)
-    
+
+    items_payload = [
+        {
+            "product_id": str(item_data["product"].id),
+            "quantity": item_data["quantity"],
+            "unit_price": str(item_data["product"].price),
+        }
+        for item_data in order_items
+    ]
+    await publish_order_created(
+        db,
+        order.id,
+        order.user_id,
+        float(total_amount),
+        items_payload,
+    )
     await db.commit()
     
-    saga = SagaOrchestrator(db)
+    saga = SagaOrchestrator(db, payment_gateway=get_payment_gateway())
     success = await saga.execute(order.id, idempotency_key)
     
     result = await db.execute(
@@ -139,7 +192,16 @@ async def create_order(
     
     response_data = await build_order_response(order)
     response_status = 201 if success else 422
-    
+
+    if success and settings.duplicate_guard_enabled:
+        for item in order.items:
+            await record_order_fingerprint(
+                str(order.user_id),
+                str(item.product_id),
+                item.quantity,
+                str(order.id),
+            )
+
     redis_client = await get_redis()
     await complete_idempotency_key(
         idempotency_key,
